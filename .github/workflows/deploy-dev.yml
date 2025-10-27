@@ -31,7 +31,7 @@ jobs:
           run_install: false
       - name: Deploy to Dev
         run: |
-          git_version="$(scripts/olimar-version.sh)"
+          git_version="$(scripts/get-version.sh)"
           cd servers/olimar
           ./scripts/create_docker.sh "${git_version}"
           cd deploy
