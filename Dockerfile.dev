@@ -1,0 +1,28 @@
+# Development Dockerfile with hot reloading
+FROM node:24-alpine AS development
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+# Install goose v3.22.1 for database migrations
+RUN apk add --no-cache curl && \
+    curl -fsSL https://raw.githubusercontent.com/pressly/goose/master/install.sh | GOOSE_VERSION=v3.22.1 sh && \
+    apk del curl
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install all dependencies (including dev dependencies)
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Expose the port
+EXPOSE 3000
+
+# Start in development mode with hot reloading
+CMD ["pnpm", "run", "dev"]

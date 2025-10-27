@@ -1,0 +1,55 @@
+{
+  "name": "fern-autopilot",
+  "version": "1.0.0",
+  "description": "Ferns Autopilot service for pushing updates to customers and tracking generation workflows",
+  "type": "module",
+  "main": "src/index.ts",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "start": "node --experimental-strip-types src/index.ts",
+    "dev": "node --experimental-strip-types --watch src/index.ts",
+    "watch": "tsc --noEmit --watch",
+    "tunnel": "node scripts/tests/tunnel.js",
+    "docker:build": "docker build -t fern-autopilot-dev:latest .",
+    "docker:run": "docker run -p 3000:3000 --env-file .env fern-autopilot-dev:latest",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "docker:restart": "docker-compose restart",
+    "db:generate": "docker run --rm -v $(pwd):/src -w /src sqlc/sqlc:1.27.0 generate -f src/database/sqlc.yml",
+    "db:migrate:up": "./scripts/db-run-migrations.sh up",
+    "db:migrate:down": "./scripts/db-run-migrations.sh down",
+    "db:migrate:status": "./scripts/db-run-migrations.sh status",
+    "db:migrate:reset": "./scripts/db-run-migrations.sh reset",
+    "db:migrate:create": "./scripts/db-create-migration.sh",
+    "db:migrate": "./scripts/db-run-migrations.sh up",
+    "db:psql": "docker-compose exec postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-autopilot}",
+    "db:reset": "docker-compose down -v && docker-compose up -d postgres && sleep 5 && pnpm run db:migrate:up"
+  },
+  "keywords": [
+    "github",
+    "webhook",
+    "octokit"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@octokit/webhooks": "^13.3.0",
+    "@types/js-yaml": "^4.0.9",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "js-yaml": "^4.1.0",
+    "octokit": "^4.0.2",
+    "pg": "^8.16.3",
+    "winston": "^3.18.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.15.5",
+    "localtunnel": "^2.0.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.2"
+  }
+}

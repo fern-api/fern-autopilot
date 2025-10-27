@@ -1,0 +1,52 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: olimar-postgres
+    environment:
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=${DB_NAME:-autopilot}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: fern-autopilot-dev
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres  # Override for container-to-container communication
+    env_file:
+      - .env
+    volumes:
+      - ./private-key.pem:/app/private-key.pem
+      - ./src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - /app/node_modules
+    command: pnpm run dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  postgres-data:
+
+networks:
+  app-network:
+    driver: bridge
