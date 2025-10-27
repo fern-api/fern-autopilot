@@ -27,7 +27,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.11.0
+          version: 10.11.0 # NOTE: must match version in package.json
           run_install: false
       - name: Deploy to Prod
         run: |
