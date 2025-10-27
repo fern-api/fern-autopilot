@@ -82,24 +82,12 @@ pnpm start
 - `POST /api/webhook` - GitHub webhook endpoint
 - `GET /health` - Health check endpoint
 
-## Setting up GitHub App Webhook
-
-1. In your GitHub App settings, set the webhook URL to: `https://your-domain.com/api/webhook`
-2. Set the webhook secret (must match `WEBHOOK_SECRET` in `.env`)
-3. Select the events you want to subscribe to (Pull request, Push)
-4. Ensure the webhook is active
-
-## How It Works
-
-1. GitHub sends webhook events to `/api/webhook`
-2. The server verifies the webhook signature
-3. Based on the event type (PR merge or push), it determines the target branch
-4. It looks up the corresponding workflow file for that branch
-5. It triggers a workflow dispatch with relevant context (PR number, commit SHA, etc.)\
-
 
 ## Testing with the [Development] Fern Bot Github App
 To set up the app I:
 1. created a new webhook secret (should be rotated and saved in 1Pass before production use)
 2. Disabled SSL for now (so I can use my local server without need to setup encryption)
 3. Created a new private key (will delete before production use and create a real one to be stored in a more secure location)
+4. Started a local tunnel with `pnpm tunnel`
+5. Updated the [Github App Settings](https://github.com/organizations/fern-demo/settings/apps/development-fern-autopilot) with the tunnel URL as the webhook endpoint (e.g. https://short-rings-burn.loca.lt/api/webhook)
+6. Restarted the app and interacted with the repo that has "[Development] Fern Bot Github App" installed
