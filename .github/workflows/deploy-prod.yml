@@ -30,6 +30,8 @@ jobs:
           version: 10.11.0 # NOTE: must match version in package.json
           run_install: false
       - name: Deploy to Prod
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.FERN_NPM_TOKEN }}
         run: |
           git_version="$(scripts/get-version.sh)"
           cd servers/autopilot
