@@ -4,6 +4,24 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+catalogs:
+  default:
+    '@types/express':
+      specifier: ^4.17.21
+      version: 4.17.23
+    '@types/node':
+      specifier: ^22.0.0
+      version: 22.18.12
+    '@types/pg':
+      specifier: ^8.15.5
+      version: 8.15.5
+    tsx:
+      specifier: ^4.19.2
+      version: 4.20.6
+    typescript:
+      specifier: ^5.5.2
+      version: 5.9.3
+
 importers:
 
   .:
@@ -34,44 +52,22 @@ importers:
         version: 3.18.3
     devDependencies:
       '@types/express':
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.17.23
       '@types/node':
-        specifier: ^20.14.0
-        version: 20.19.23
+        specifier: 'catalog:'
+        version: 22.18.12
       '@types/pg':
-        specifier: ^8.15.5
+        specifier: 'catalog:'
         version: 8.15.5
       localtunnel:
         specifier: ^2.0.2
         version: 2.0.2
       tsx:
-        specifier: ^4.19.2
+        specifier: 'catalog:'
         version: 4.20.6
       typescript:
-        specifier: ^5.5.2
-        version: 5.9.3
-
-  packages/workflow-db:
-    dependencies:
-      pg:
-        specifier: ^8.16.3
-        version: 8.16.3
-      winston:
-        specifier: ^3.18.3
-        version: 3.18.3
-    devDependencies:
-      '@types/pg':
-        specifier: ^8.15.5
-        version: 8.15.5
-      dotenv:
-        specifier: ^16.4.5
-        version: 16.6.1
-      tsx:
-        specifier: ^4.19.2
-        version: 4.20.6
-      typescript:
-        specifier: ^5.7.3
+        specifier: 'catalog:'
         version: 5.9.3
 
 packages:
@@ -373,8 +369,8 @@ packages:
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
 
-  '@types/node@20.19.23':
-    resolution: {integrity: sha512-yIdlVVVHXpmqRhtyovZAcSy0MiPcYWGkoO4CGe/+jpP0hmNuihm4XhHbADpK++MsiLHP5MVlv+bcgdF99kSiFQ==}
+  '@types/node@22.18.12':
+    resolution: {integrity: sha512-BICHQ67iqxQGFSzfCFTT7MRQ5XcBjG5aeKh5Ok38UBbPe5fxTyE+aHFxwVrGyr8GNlqFMLKD1D3P2K/1ks8tog==}
 
   '@types/pg@8.15.5':
     resolution: {integrity: sha512-LF7lF6zWEKxuT3/OR8wAZGzkg4ENGXFNyiV/JeOt9z5B+0ZVwbql9McqX5c/WStFq1GaGso7H1AzP/qSzmlCKQ==}
@@ -1198,15 +1194,15 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
 
   '@types/express-serve-static-core@4.19.7':
     dependencies:
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
       '@types/qs': 6.14.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.0
@@ -1224,13 +1220,13 @@ snapshots:
 
   '@types/mime@1.3.5': {}
 
-  '@types/node@20.19.23':
+  '@types/node@22.18.12':
     dependencies:
       undici-types: 6.21.0
 
   '@types/pg@8.15.5':
     dependencies:
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
       pg-protocol: 1.10.3
       pg-types: 2.2.0
 
@@ -1241,16 +1237,16 @@ snapshots:
   '@types/send@0.17.5':
     dependencies:
       '@types/mime': 1.3.5
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
 
   '@types/send@1.2.0':
     dependencies:
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
 
   '@types/serve-static@1.15.9':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 20.19.23
+      '@types/node': 22.18.12
       '@types/send': 0.17.5
 
   '@types/triple-beam@1.3.5': {}
