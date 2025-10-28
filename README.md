@@ -179,11 +179,7 @@ pnpm tunnel
   - Enable the **Active** checkbox
   - Paste in your Tunnel Link with an appended `/api/webhook/` for the **Webhook URL**
   - Paste in the same **Secret** that you entered for the **WEBHOOK_SECRET** in your **.env** file
-  - Disable SSL verification
 4. Click **Save changes**
-
-> **TODO**: Re-enable SSL verification eventually
-
 
 ### 7. Verify Your Connections:
 
