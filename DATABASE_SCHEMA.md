@@ -28,6 +28,7 @@ erDiagram
         string github_workflow_run_id(nullable)
         enum generator_id
         string generator_version
+        enum status
     }
 
     ORG_CONFIG_REPOS ||--o{ GENERATOR_RUNS : triggers
@@ -36,6 +37,8 @@ erDiagram
 
     GITHUB_WORKFLOWS {
         string id
+        string github_org
+        string github_repo
         string workflow_url
         string commit_sha
     }
