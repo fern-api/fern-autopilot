@@ -39,8 +39,8 @@ cp .env.example .env
 ```
 
 3. Configure your `.env` file with your GitHub App credentials:
-   - `APP_ID`: Your GitHub App ID (found in APp settings)
-   - `WEBHOOK_SECRET`: The webhook secret you set in your GitHub App settings (CHRIS TODO - this is from test repo, not app settings, I think?)
+   - `APP_ID`: Your GitHub App ID
+   - `WEBHOOK_SECRET`: The webhook secret you set in your GitHub App settings 
    - `PRIVATE_KEY` (recommended): Your GitHub App's private key directly as a string (PEM format)
    - `PRIVATE_KEY_PATH` (fallback): Path to your GitHub App's private key file (e.g., `./private-key.pem`)
    - `PORT`: Server port (default: 3000)
