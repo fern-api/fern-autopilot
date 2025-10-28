@@ -12,7 +12,7 @@ erDiagram
         uuid id
         string github_org
         string github_repo
-        enum repo_type
+        enum repo_type "typescript|python|java|go|ruby|csharp|swift|kotlin|php"
         bool is_active
     }
 
@@ -26,9 +26,10 @@ erDiagram
     GENERATOR_RUNS {
         uuid id
         string github_workflow_run_id(nullable)
-        enum generator_id
+        string api_name
+        enum generator_id "fernapi/fern-python-sdk|fernapi/fern-java-sdk|fernapi/fern-typescript-sdk|etc"
         string generator_version
-        enum status
+        enum status "pending|in_progress|success|failed|cancelled"
     }
 
     ORG_CONFIG_REPOS ||--o{ GENERATOR_RUNS : triggers

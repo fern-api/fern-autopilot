@@ -1,13 +1,16 @@
 import { type EnvironmentInfo, EnvironmentType } from "@fern-fern/fern-cloud-sdk/api/resources/environments";
-import { Stack, type StackProps } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, Stack, type StackProps } from "aws-cdk-lib";
 import { Certificate } from "aws-cdk-lib/aws-certificatemanager";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as actions from "aws-cdk-lib/aws-cloudwatch-actions";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
 import { Peer, Port, SecurityGroup, Vpc } from "aws-cdk-lib/aws-ec2";
+import * as ecs from "aws-cdk-lib/aws-ecs";
 import { Cluster, ContainerImage, LogDriver } from "aws-cdk-lib/aws-ecs";
 import { ApplicationLoadBalancedFargateService } from "aws-cdk-lib/aws-ecs-patterns";
 import { ApplicationProtocol, HttpCodeTarget } from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import { LogGroup } from "aws-cdk-lib/aws-logs";
+import * as rds from "aws-cdk-lib/aws-rds";
 import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { PrivateDnsNamespace } from "aws-cdk-lib/aws-servicediscovery";
 import * as sns from "aws-cdk-lib/aws-sns";
@@ -55,6 +58,18 @@ export class AutopilotDeployStack extends Stack {
     autopilotSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), "allow HTTPS traffic from anywhere");
     autopilotSg.addIngressRule(Peer.ipv4(environmentInfo.vpcIpv4Cidr), Port.allTcp());
     console.log(`✓ Security group created: autopilot-${environmentType.toLowerCase()}`);
+
+    console.log("\n🔒 Creating RDS security group...");
+    const rdsSg = new SecurityGroup(this, "rds-sg", {
+      securityGroupName: `autopilot-rds-${environmentType.toLowerCase()}`,
+      vpc,
+      allowAllOutbound: true
+    });
+    rdsSg.addIngressRule(Peer.ipv4(environmentInfo.vpcIpv4Cidr), Port.tcp(5432), "allow PostgreSQL from VPC");
+    console.log(`✓ RDS security group created: autopilot-rds-${environmentType.toLowerCase()}`);
+
+    const dbInstance = this.createDatabase(vpc, rdsSg, autopilotSg, environmentType);
+    const databaseName = "autopilot";
 
     console.log("\n🏗️  Looking up ECS cluster...");
     const cluster = Cluster.fromClusterAttributes(this, "cluster", {
@@ -131,7 +146,15 @@ export class AutopilotDeployStack extends Stack {
         }),
         environment: {
           PORT: "3001",
+          LOG_LEVEL: "warn",
+          DB_HOST: dbInstance.dbInstanceEndpointAddress,
+          DB_PORT: dbInstance.dbInstanceEndpointPort,
+          DB_NAME: databaseName,
           ...envVariables
+        },
+        secrets: {
+          DB_USERNAME: ecs.Secret.fromSecretsManager(dbInstance.secret!, "username"),
+          DB_PASSWORD: ecs.Secret.fromSecretsManager(dbInstance.secret!, "password")
         }
       },
       assignPublicIp: true,
@@ -203,6 +226,56 @@ export class AutopilotDeployStack extends Stack {
 
     console.log("\n✅ Stack deployment configuration complete!");
     console.log(`📍 Service will be available at: https://${domainName}`);
+  }
+
+  private createDatabase(
+    vpc: ec2.IVpc,
+    rdsSg: SecurityGroup,
+    autopilotSg: SecurityGroup,
+    environmentType: EnvironmentType
+  ): rds.DatabaseInstance {
+    console.log("\n🗄️  Creating RDS PostgreSQL instance...");
+    const databaseName = "autopilot";
+    const dbUsername = "autopilot_app";
+
+    const dbInstance = new rds.DatabaseInstance(this, "autopilot-db-instance", {
+      engine: rds.DatabaseInstanceEngine.postgres({
+        version: rds.PostgresEngineVersion.VER_15_5
+      }),
+      instanceType: environmentType === EnvironmentType.Prod
+        ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.SMALL)
+        : ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MICRO),
+      vpc,
+      securityGroups: [rdsSg],
+      allocatedStorage: 100,
+      maxAllocatedStorage: 200,
+      storageType: rds.StorageType.GP3,
+      databaseName,
+      credentials: rds.Credentials.fromGeneratedSecret(dbUsername, {
+        secretName: `autopilot-db-credentials-${environmentType.toLowerCase()}`
+      }),
+      removalPolicy: environmentType === EnvironmentType.Prod ? RemovalPolicy.SNAPSHOT : RemovalPolicy.DESTROY,
+      deletionProtection: environmentType === EnvironmentType.Prod,
+      backupRetention: environmentType === EnvironmentType.Prod
+        ? Duration.days(7)
+        : Duration.days(1),
+      publiclyAccessible: false,
+      cloudwatchLogsExports: ["postgresql"],
+      storageEncrypted: true,
+      multiAz: environmentType === EnvironmentType.Prod
+    });
+
+    // Allow Fargate tasks to connect to RDS
+    dbInstance.connections.allowFrom(autopilotSg, Port.tcp(5432), "Allow Fargate tasks to connect to RDS");
+
+    console.log(`✓ RDS instance created: ${databaseName}`);
+    console.log(`✓ Instance type: ${environmentType === EnvironmentType.Prod ? 't4g.small' : 't4g.micro'}`);
+    console.log(`✓ Storage: 100GB (GP3, auto-scaling up to 200GB)`);
+    console.log(`✓ Default database: ${databaseName}`);
+    console.log(`✓ Database user: ${dbUsername}`);
+    console.log(`✓ Credentials stored in Secrets Manager: autopilot-db-credentials-${environmentType.toLowerCase()}`);
+
+    return dbInstance;
   }
 }
 
