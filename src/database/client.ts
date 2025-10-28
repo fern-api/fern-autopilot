@@ -1,5 +1,5 @@
-import pg from 'pg';
-import logger from '../logger.ts';
+import pg from "pg";
+import logger from "../logger.ts";
 
 const { Client } = pg;
 
@@ -8,11 +8,11 @@ const { Client } = pg;
  * Uses environment variables for connection settings
  */
 const config = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432', 10),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  database: process.env.DB_NAME || 'autopilot',
+  host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "5432", 10),
+  user: process.env.DB_USER || "postgres",
+  password: process.env.DB_PASSWORD || "postgres",
+  database: process.env.DB_NAME || "autopilot"
 };
 
 /**
@@ -28,7 +28,7 @@ export async function getClient(): Promise<pg.Client> {
   if (!client) {
     client = new Client(config);
     await client.connect();
-    logger.info('Database client connected');
+    logger.info("Database client connected");
   }
   return client;
 }
@@ -40,10 +40,10 @@ export async function getClient(): Promise<pg.Client> {
 export async function testConnection(): Promise<void> {
   try {
     const db = await getClient();
-    const result = await db.query('SELECT NOW()');
-    logger.info('Database connection successful', { timestamp: result.rows[0].now });
+    const result = await db.query("SELECT NOW()");
+    logger.info("Database connection successful", { timestamp: result.rows[0].now });
   } catch (error) {
-    logger.error('Failed to connect to database:', error);
+    logger.error("Failed to connect to database:", error);
     throw error;
   }
 }
@@ -57,10 +57,10 @@ export async function closeClient(): Promise<void> {
     if (client) {
       await client.end();
       client = null;
-      logger.info('Database client closed');
+      logger.info("Database client closed");
     }
   } catch (error) {
-    logger.error('Error closing database client:', error);
+    logger.error("Error closing database client:", error);
     throw error;
   }
 }

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-import dotenv from 'dotenv';
-import { spawn } from 'child_process';
+import dotenv from "dotenv";
+import { spawn } from "child_process";
 
 // Load environment variables from .env file
 dotenv.config();
 
 // Get PORT from environment, default to 3000
-const port = process.env.PORT || '3000';
+const port = process.env.PORT || "3000";
 
 // Get subdomain from environment (optional, for stable URL)
 const subdomain = process.env.TUNNEL_SUBDOMAIN;
@@ -27,11 +27,11 @@ const lt = spawn('lt', args, {
   shell: true
 });
 
-lt.on('error', (error) => {
-  console.error('Failed to start localtunnel:', error);
+lt.on("error", (error) => {
+  console.error("Failed to start localtunnel:", error);
   process.exit(1);
 });
 
-lt.on('close', (code) => {
+lt.on("close", (code) => {
   process.exit(code || 0);
 });

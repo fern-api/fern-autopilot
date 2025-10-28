@@ -5,7 +5,7 @@
  * Delete this file once you've understood the pattern.
  */
 
-import { getClient } from './client.ts';
+import { getClient } from "./client.ts";
 // Import sqlc-generated query functions (after running pnpm run db:generate)
 // import { createWorkflowRun, getWorkflowRun, listWorkflowRunsByRepo } from './generated-queries/index.ts';
 

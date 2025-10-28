@@ -1,13 +1,10 @@
 #!/usr/bin/env node
-import * as cdk from 'aws-cdk-lib';
-import 'source-map-support/register';
+import * as cdk from "aws-cdk-lib";
+import "source-map-support/register";
 
-import {
-  EnvironmentType,
-  type Environments,
-} from '@fern-fern/fern-cloud-sdk/api/resources/environments';
+import { EnvironmentType, type Environments } from "@fern-fern/fern-cloud-sdk/api/resources/environments";
 
-import { AutopilotDeployStack } from '../src/deploy-stack';
+import { AutopilotDeployStack } from "../src/deploy-stack";
 
 (async () => {
   await main();
@@ -16,7 +13,7 @@ import { AutopilotDeployStack } from '../src/deploy-stack';
 async function main() {
   const version = process.env.VERSION;
   if (version === undefined) {
-    throw new Error('Version is not specified!');
+    throw new Error("Version is not specified!");
   }
   const environments = await getEnvironments();
   const app = new cdk.App();
@@ -25,7 +22,7 @@ async function main() {
       case EnvironmentType.Dev2: {
         const dev2Info = environments[environmentType];
         if (dev2Info == null) {
-          throw new Error('Unexpected error: dev2Info is undefined');
+          throw new Error("Unexpected error: dev2Info is undefined");
         }
         new AutopilotDeployStack(
           app,
@@ -34,10 +31,10 @@ async function main() {
           environmentType,
           dev2Info,
           {
-            GITHUB_TOKEN: getEnvVarOrThrow('GITHUB_TOKEN'),
+            GITHUB_TOKEN: getEnvVarOrThrow("GITHUB_TOKEN")
           },
           {
-            env: { account: '985111089818', region: 'us-east-1' },
+            env: { account: "985111089818", region: "us-east-1" }
           }
         );
         break;
@@ -45,7 +42,7 @@ async function main() {
       case EnvironmentType.Prod: {
         const prodInfo = environments[environmentType];
         if (prodInfo == null) {
-          throw new Error('Unexpected error: prodInfo is undefined');
+          throw new Error("Unexpected error: prodInfo is undefined");
         }
         new AutopilotDeployStack(
           app,
@@ -54,10 +51,10 @@ async function main() {
           environmentType,
           prodInfo,
           {
-            GITHUB_TOKEN: getEnvVarOrThrow('GITHUB_TOKEN'),
+            GITHUB_TOKEN: getEnvVarOrThrow("GITHUB_TOKEN")
           },
           {
-            env: { account: '985111089818', region: 'us-east-1' },
+            env: { account: "985111089818", region: "us-east-1" }
           }
         );
         break;
@@ -78,12 +75,12 @@ function getEnvVarOrThrow(envVarName: string): string {
 
 async function getEnvironments(): Promise<Environments> {
   const response = await fetch(
-    'https://raw.githubusercontent.com/fern-api/fern-cloud/main/env-scoped-resources/environments.json',
+    "https://raw.githubusercontent.com/fern-api/fern-cloud/main/env-scoped-resources/environments.json",
     {
-      method: 'GET',
+      method: "GET",
       headers: {
-        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-      },
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`
+      }
     }
   );
 
