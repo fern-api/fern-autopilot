@@ -44,7 +44,8 @@ export class AutopilotDeployStack extends Stack {
     console.log(`Stack ID: ${id}`);
 
     console.log("\n📡 Looking up VPC...");
-    const vpc = Vpc.fromLookup(this, "vpc", {
+    const vpcName = environmentType === EnvironmentType.Prod ? "fern prod" : "fern dev";
+    const vpc = Vpc.fromLookup(this, vpcName, {
       vpcId: environmentInfo.vpcId
     });
     console.log(`✓ VPC found: ${environmentInfo.vpcId}`);
