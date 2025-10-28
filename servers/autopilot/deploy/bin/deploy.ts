@@ -9,7 +9,9 @@ import {
 
 import { AutopilotDeployStack } from '../src/deploy-stack';
 
-void main();
+(async () => {
+  await main();
+})();
 
 async function main() {
   const version = process.env.VERSION;
@@ -61,7 +63,7 @@ async function main() {
         break;
       }
       default:
-        return;
+        continue;
     }
   }
 }

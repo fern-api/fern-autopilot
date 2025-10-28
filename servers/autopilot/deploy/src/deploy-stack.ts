@@ -37,11 +37,19 @@ import {
       props?: StackProps
     ) {
       super(scope, id, props);
-  
+
+      console.log('🚀 Starting Autopilot stack deployment');
+      console.log(`Environment: ${environmentType}`);
+      console.log(`Version: ${version}`);
+      console.log(`Stack ID: ${id}`);
+
+      console.log('\n📡 Looking up VPC...');
       const vpc = Vpc.fromLookup(this, 'vpc', {
         vpcId: environmentInfo.vpcId,
       });
+      console.log(`✓ VPC found: ${environmentInfo.vpcId}`);
   
+      console.log('\n🔒 Creating security group...');
       const autopilotSg = new SecurityGroup(this, 'autopilot-sg', {
         securityGroupName: `autopilot-${environmentType.toLowerCase()}`,
         vpc,
@@ -49,13 +57,17 @@ import {
       });
       autopilotSg.addIngressRule(Peer.anyIpv4(), Port.tcp(443), 'allow HTTPS traffic from anywhere');
       autopilotSg.addIngressRule(Peer.ipv4(environmentInfo.vpcIpv4Cidr), Port.allTcp());
+      console.log(`✓ Security group created: autopilot-${environmentType.toLowerCase()}`);
   
+      console.log('\n🏗️  Looking up ECS cluster...');
       const cluster = Cluster.fromClusterAttributes(this, 'cluster', {
         clusterName: environmentInfo.ecsInfo.clusterName,
         vpc,
         securityGroups: [],
       });
-  
+      console.log(`✓ Cluster found: ${environmentInfo.ecsInfo.clusterName}`);
+
+      console.log('\n🗺️  Setting up Cloud Map namespace...');
       const cloudmapNamespaceName = environmentInfo.cloudMapNamespaceInfo.namespaceName;
       const cloudMapNamespace = PrivateDnsNamespace.fromPrivateDnsNamespaceAttributes(
         this,
@@ -66,24 +78,32 @@ import {
           namespaceName: cloudmapNamespaceName,
         }
       );
-  
+      console.log(`✓ Cloud Map namespace: ${cloudmapNamespaceName}`);
+
+      console.log('\n📝 Looking up CloudWatch log group...');
       const logGroup = LogGroup.fromLogGroupName(
         this,
         'log-group',
         environmentInfo.logGroupInfo.logGroupName
       );
-  
+      console.log(`✓ Log group: ${environmentInfo.logGroupInfo.logGroupName}`);
+
+      console.log('\n🔐 Looking up SSL certificate...');
       const certificate = Certificate.fromCertificateArn(
         this,
         'certificate',
         environmentInfo.route53Info.certificateArn
       );
+      console.log(`✓ Certificate ARN: ${environmentInfo.route53Info.certificateArn}`);
   
+      console.log('\n🔔 Creating SNS topic for alerts...');
       const snsTopic = new sns.Topic(this, 'autopilot-sns-topic', {
         topicName: id,
       });
       snsTopic.addSubscription(new EmailSubscription('alerts@buildwithfern.com'));
-  
+      console.log(`✓ SNS topic created: ${id}`);
+      console.log('✓ Email subscription added: alerts@buildwithfern.com');
+
       const environmentResources =
         environmentType === EnvironmentType.Prod
           ? {
@@ -96,7 +116,20 @@ import {
               memoryLimitMiB: 2048,
               desiredCount: 1,
             };
+
+      console.log('\n⚙️  Resource configuration:');
+      console.log(`  CPU: ${environmentResources.cpu}`);
+      console.log(`  Memory: ${environmentResources.memoryLimitMiB} MiB`);
+      console.log(`  Desired count: ${environmentResources.desiredCount}`);
   
+      const domainName = getServiceDomainName(environmentType, environmentInfo);
+      console.log('\n🚢 Creating Fargate service...');
+      console.log(`  Service name: ${SERVICE_NAME}`);
+      console.log(`  Container: ${CONTAINER_NAME}`);
+      console.log(`  Image: ../autopilot:${version}.tar`);
+      console.log(`  Domain: ${domainName}`);
+      console.log(`  Execute command enabled: ${environmentType !== EnvironmentType.Prod}`);
+
       const fargateService = new ApplicationLoadBalancedFargateService(this, SERVICE_NAME, {
         serviceName: SERVICE_NAME,
         cluster,
@@ -126,7 +159,7 @@ import {
           hostedZoneId: environmentInfo.route53Info.hostedZoneId,
           zoneName: environmentInfo.route53Info.hostedZoneName,
         }),
-        domainName: getServiceDomainName(environmentType, environmentInfo),
+        domainName,
         cloudMapOptions:
           cloudMapNamespace != null
             ? {
@@ -135,15 +168,19 @@ import {
               }
             : undefined,
       });
-  
+      console.log('✓ Fargate service created');
+
+      console.log('\n🏥 Configuring health checks...');
       fargateService.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '30');
-  
       fargateService.targetGroup.configureHealthCheck({
         healthyHttpCodes: '200,204',
         path: '/health',
         port: '3001',
       });
+      console.log('✓ Health check configured: /health (200,204)');
   
+      console.log('\n⏰ Creating CloudWatch alarms...');
+      
       const lbResponseTimeAlarm = new cloudwatch.Alarm(
         this,
         `autopilot-${environmentType.toLowerCase()}-lb-target-response-time-alarm`,
@@ -155,7 +192,8 @@ import {
         }
       );
       lbResponseTimeAlarm.addAlarmAction(new actions.SnsAction(snsTopic));
-  
+      console.log('✓ Response time alarm created (threshold: 1s)');
+
       const lbUnhealthyHostCountAlarm = new cloudwatch.Alarm(
         this,
         `autopilot-${environmentType.toLowerCase()}-lb-unhealthy-host-count-alarm`,
@@ -167,7 +205,8 @@ import {
         }
       );
       lbUnhealthyHostCountAlarm.addAlarmAction(new actions.SnsAction(snsTopic));
-  
+      console.log('✓ Unhealthy host count alarm created (threshold: 1)');
+
       const lb500CountAlarm = new cloudwatch.Alarm(
         this,
         `autopilot-${environmentType.toLowerCase()}-lb-500x-count`,
@@ -179,6 +218,10 @@ import {
         }
       );
       lb500CountAlarm.addAlarmAction(new actions.SnsAction(snsTopic));
+      console.log('✓ 500 error alarm created (threshold: 2)');
+
+      console.log('\n✅ Stack deployment configuration complete!');
+      console.log(`📍 Service will be available at: https://${domainName}`);
     }
   }
   
