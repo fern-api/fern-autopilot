@@ -6,6 +6,7 @@ import http from "http";
 import logger from "./logger.ts";
 import { registerWebhookHandlers } from "./webhooks/index.ts";
 import { testConnection, closeClient } from "./database/client.ts";
+import { initProcessor } from "./background/index.ts";
 
 // Load environment variables
 dotenv.config();
@@ -116,6 +117,9 @@ export async function initializeServer(): Promise<http.Server> {
 
   // Create app
   const app = createApp(appId, privateKey, webhookSecret);
+
+  // Initialize background processor (processes webhooks asynchronously)
+  initProcessor(app);
 
   // Start server
   const server = startServer(app);
