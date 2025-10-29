@@ -8,10 +8,21 @@ dotenv.config();
 // Get PORT from environment, default to 3000
 const port = process.env.PORT || '3000';
 
+// Get subdomain from environment (optional, for stable URL)
+const subdomain = process.env.TUNNEL_SUBDOMAIN;
+
 console.log(`Starting localtunnel on port ${port}...`);
+if (subdomain) {
+  console.log(`Requesting subdomain: ${subdomain}.loca.lt`);
+}
 
 // Spawn localtunnel process
-const lt = spawn('lt', ['--port', port], {
+const args = ['--port', port];
+if (subdomain) {
+  args.push('--subdomain', subdomain);
+}
+
+const lt = spawn('lt', args, {
   stdio: 'inherit',
   shell: true
 });
