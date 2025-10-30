@@ -15,6 +15,7 @@ import { HostedZone } from "aws-cdk-lib/aws-route53";
 import { PrivateDnsNamespace } from "aws-cdk-lib/aws-servicediscovery";
 import * as sns from "aws-cdk-lib/aws-sns";
 import { EmailSubscription } from "aws-cdk-lib/aws-sns-subscriptions";
+import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from "aws-cdk-lib/custom-resources";
 import type { Construct } from "constructs";
 
 const CONTAINER_NAME = "autopilot";
@@ -123,6 +124,21 @@ export class AutopilotDeployStack extends Stack {
     console.log(`  Memory: ${environmentResources.memoryLimitMiB} MiB`);
     console.log(`  Desired count: ${environmentResources.desiredCount}`);
 
+    // Create migration task definition and runner
+    console.log("\n🔄 Setting up database migration task...");
+    const migrationRunner = this.createMigrationRunner(
+      vpc,
+      cluster,
+      autopilotSg,
+      logGroup,
+      version,
+      dbInstance,
+      databaseName,
+      envVariables,
+      environmentType
+    );
+    console.log("✓ Migration task configured");
+
     const domainName = getServiceDomainName(environmentType, environmentInfo);
     console.log("\n🚢 Creating Fargate task definition with health check...");
     console.log(`  Container: ${CONTAINER_NAME}`);
@@ -200,7 +216,10 @@ export class AutopilotDeployStack extends Stack {
             }
           : undefined
     });
-    console.log("✓ Fargate service created")
+
+    // Make the Fargate service depend on migration completion
+    fargateService.node.addDependency(migrationRunner);
+    console.log("✓ Fargate service created");
 
     console.log("\n🏥 Configuring health checks...");
     fargateService.targetGroup.setAttribute("deregistration_delay.timeout_seconds", "30");
@@ -304,6 +323,160 @@ export class AutopilotDeployStack extends Stack {
     console.log(`✓ Credentials stored in Secrets Manager: autopilot-db-credentials-${environmentType.toLowerCase()}`);
 
     return dbInstance;
+  }
+
+  private createMigrationRunner(
+    vpc: ec2.IVpc,
+    cluster: ecs.ICluster,
+    securityGroup: SecurityGroup,
+    logGroup: LogGroup,
+    version: string,
+    dbInstance: rds.DatabaseInstance,
+    databaseName: string,
+    envVariables: AutopilotEnvVariables,
+    environmentType: EnvironmentType
+  ): AwsCustomResource {
+    // Create task definition for migration
+    const migrationTaskDef = new ecs.FargateTaskDefinition(this, "MigrationTaskDef", {
+      cpu: 512,
+      memoryLimitMiB: 1024
+    });
+
+    // Grant access to secrets
+    dbInstance.secret?.grantRead(migrationTaskDef.taskRole);
+
+    // Add container for migration
+    migrationTaskDef.addContainer("migration-container", {
+      image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
+      logging: LogDriver.awsLogs({
+        logGroup,
+        streamPrefix: "migration"
+      }),
+      environment: {
+        PORT: "3001",
+        LOG_LEVEL: "info",
+        DB_HOST: dbInstance.dbInstanceEndpointAddress,
+        DB_PORT: dbInstance.dbInstanceEndpointPort,
+        DB_NAME: databaseName,
+        ...envVariables
+      },
+      secrets: {
+        DB_USERNAME: ecs.Secret.fromSecretsManager(dbInstance.secret!, "username"),
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbInstance.secret!, "password")
+      },
+      command: ["pnpm", "db:migrate:up"]
+    });
+
+    // Get public subnets
+    const publicSubnets = vpc.publicSubnets.map((subnet) => subnet.subnetId);
+
+    // Run the migration task using AwsCustomResource
+    const runTaskResource = new AwsCustomResource(this, "RunMigrationTask", {
+      onCreate: {
+        service: "ECS",
+        action: "runTask",
+        parameters: {
+          cluster: cluster.clusterName,
+          taskDefinition: migrationTaskDef.taskDefinitionArn,
+          launchType: "FARGATE",
+          networkConfiguration: {
+            awsvpcConfiguration: {
+              subnets: publicSubnets,
+              securityGroups: [securityGroup.securityGroupId],
+              assignPublicIp: "ENABLED"
+            }
+          }
+        },
+        physicalResourceId: PhysicalResourceId.fromResponse("tasks.0.taskArn")
+      },
+      onUpdate: {
+        service: "ECS",
+        action: "runTask",
+        parameters: {
+          cluster: cluster.clusterName,
+          taskDefinition: migrationTaskDef.taskDefinitionArn,
+          launchType: "FARGATE",
+          networkConfiguration: {
+            awsvpcConfiguration: {
+              subnets: publicSubnets,
+              securityGroups: [securityGroup.securityGroupId],
+              assignPublicIp: "ENABLED"
+            }
+          }
+        },
+        physicalResourceId: PhysicalResourceId.fromResponse("tasks.0.taskArn")
+      },
+      policy: AwsCustomResourcePolicy.fromSdkCalls({
+        resources: AwsCustomResourcePolicy.ANY_RESOURCE
+      }),
+      timeout: Duration.minutes(15)
+    });
+
+    // Grant the custom resource permission to pass roles
+    migrationTaskDef.taskRole.grantPassRole(runTaskResource.grantPrincipal);
+    migrationTaskDef.executionRole!.grantPassRole(runTaskResource.grantPrincipal);
+
+    // Wait for the task to complete using a waiter
+    const waitForTaskResource = new AwsCustomResource(this, "WaitForMigrationTask", {
+      onCreate: {
+        service: "ECS",
+        action: "waitFor",
+        parameters: {
+          waiterName: "TasksStopped",
+          cluster: cluster.clusterName,
+          tasks: [runTaskResource.getResponseField("tasks.0.taskArn")]
+        },
+        physicalResourceId: PhysicalResourceId.of("migration-wait-" + Date.now())
+      },
+      onUpdate: {
+        service: "ECS",
+        action: "waitFor",
+        parameters: {
+          waiterName: "TasksStopped",
+          cluster: cluster.clusterName,
+          tasks: [runTaskResource.getResponseField("tasks.0.taskArn")]
+        },
+        physicalResourceId: PhysicalResourceId.of("migration-wait-" + Date.now())
+      },
+      policy: AwsCustomResourcePolicy.fromSdkCalls({
+        resources: AwsCustomResourcePolicy.ANY_RESOURCE
+      }),
+      timeout: Duration.minutes(15)
+    });
+
+    waitForTaskResource.node.addDependency(runTaskResource);
+
+    // Check task exit code
+    const checkTaskResource = new AwsCustomResource(this, "CheckMigrationTaskStatus", {
+      onCreate: {
+        service: "ECS",
+        action: "describeTasks",
+        parameters: {
+          cluster: cluster.clusterName,
+          tasks: [runTaskResource.getResponseField("tasks.0.taskArn")]
+        },
+        physicalResourceId: PhysicalResourceId.of("migration-check-" + Date.now())
+      },
+      onUpdate: {
+        service: "ECS",
+        action: "describeTasks",
+        parameters: {
+          cluster: cluster.clusterName,
+          tasks: [runTaskResource.getResponseField("tasks.0.taskArn")]
+        },
+        physicalResourceId: PhysicalResourceId.of("migration-check-" + Date.now())
+      },
+      policy: AwsCustomResourcePolicy.fromSdkCalls({
+        resources: AwsCustomResourcePolicy.ANY_RESOURCE
+      })
+    });
+
+    checkTaskResource.node.addDependency(waitForTaskResource);
+
+    // Make sure migration runs after DB is created
+    runTaskResource.node.addDependency(dbInstance);
+
+    return checkTaskResource;
   }
 }
 
