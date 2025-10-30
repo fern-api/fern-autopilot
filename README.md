@@ -148,7 +148,7 @@ pnpm docker:up
 ```
 8. Start a live log to your docker compose instance:
 ```bash
-docker compose logs -f
+pnpm docker:logs
 ```
 9. In the other terminal, create a tunnel to the docker instance:
 ```bash
