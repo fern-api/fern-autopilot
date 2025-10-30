@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "bin": "bin/autopilot-deploy.js",
   "scripts": {
+    "compile": "tsc --noEmit",
     "cdk": "cdk",
     "deploy:dev": "cdk deploy autopilot-dev2 --require-approval never --progress events",
     "deploy:prod": "cdk deploy autopilot-prod --require-approval never --progress events"

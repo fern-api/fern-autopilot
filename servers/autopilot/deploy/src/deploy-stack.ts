@@ -91,8 +91,9 @@ export class AutopilotDeployStack extends Stack {
     console.log(`✓ Cloud Map namespace: ${cloudmapNamespaceName}`);
 
     console.log("\n📝 Looking up CloudWatch log group...");
-    const logGroup = LogGroup.fromLogGroupName(this, "log-group", environmentInfo.logGroupInfo.logGroupName);
-    console.log(`✓ Log group: ${environmentInfo.logGroupInfo.logGroupName}`);
+    const logGroupName = environmentInfo.logGroupInfo.logGroupName;
+    const logGroup = LogGroup.fromLogGroupName(this, "log-group", logGroupName);
+    console.log(`✓ Log group: ${logGroupName}`);
 
     console.log("\n🔐 Looking up SSL certificate...");
     const certificate = Certificate.fromCertificateArn(this, "certificate", environmentInfo.route53Info.certificateArn);
@@ -157,9 +158,9 @@ export class AutopilotDeployStack extends Stack {
       image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
       containerName: CONTAINER_NAME,
       portMappings: [{ containerPort: 3001 }],
-      logging: LogDriver.awsLogs({
-        logGroup,
-        streamPrefix: SERVICE_NAME
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: SERVICE_NAME,
+        logGroup: logGroup
       }),
       environment: {
         PORT: "3001",
