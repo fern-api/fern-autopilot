@@ -157,7 +157,7 @@ export class AutopilotDeployStack extends Stack {
           ...envVariables
         },
         secrets: {
-          DB_USERNAME: ecs.Secret.fromSecretsManager(dbInstance.secret!, "username"),
+          DB_USER: ecs.Secret.fromSecretsManager(dbInstance.secret!, "username"),
           DB_PASSWORD: ecs.Secret.fromSecretsManager(dbInstance.secret!, "password")
         }
       },
