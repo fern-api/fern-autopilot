@@ -183,6 +183,19 @@ export class AutopilotDeployStack extends Stack {
     });
     console.log("✓ Fargate service created");
 
+    // Add container-level health check
+    const container = fargateService.taskDefinition.defaultContainer;
+    if (container) {
+      container.addHealthCheck({
+        command: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""],
+        interval: Duration.seconds(30),
+        timeout: Duration.seconds(5),
+        retries: 3,
+        startPeriod: Duration.seconds(60)
+      });
+      console.log("✓ Container health check added");
+    }
+
     console.log("\n🏥 Configuring health checks...");
     fargateService.targetGroup.setAttribute("deregistration_delay.timeout_seconds", "30");
     fargateService.targetGroup.configureHealthCheck({
