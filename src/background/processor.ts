@@ -71,18 +71,104 @@ class BackgroundProcessor extends EventEmitter {
         ? await this.app.getInstallationOctokit(installationId)
         : await this.app.getInstallationOctokit(payload.installation.id);
 
-      // Get commit SHA from payload
-      const commitSha = payload.after || payload.head_commit?.id || 'unknown';
+      // Save the diff for custom code replays (only for non-PR pushes)
+      await this.getDiffFromPush(octokit, data);
 
       // Handle any workflow runs
+      const commitSha = payload.after || payload.head_commit?.id || 'unknown';
       await this.handleWorkflows(octokit, owner, repo, ref, commitSha);
 
       const duration = Date.now() - startTime;
       logger.info(`[Background] Completed push event in ${duration}ms`);
     } catch (error) {
+      // CHRISM - should we store errors somehow and replay them all here? How to ensure other jobs run if one fails?
       logger.error('[Background] Error processing push event:', error);
     } finally {
       this.activeJobs--;
+    }
+  }
+  // CHRISM - make committerInfo into nice struct
+  private async getDiffFromPush(octokit: any, data: { payload: any; installationId?: number }) : Promise<void> {
+      // CHRISM yet to cover:
+      // 1. Direct pushes to main - Won't have web-flow, even if those commits were previously in a PR
+      // 2. Manual CLI merges - Won't have web-flow (user performs merge locally)
+      // 3. GitHub Actions/bots - Will have their own bot username, not web-flow
+      // 4. Re-delivered packages come from logged in person, not from original data???
+
+      const { payload } = data;
+
+      // Get commit information from payload
+      // CHRISM - is head commit right? probably want to cycle all of them and filter out
+      const committerName = payload.head_commit?.committer?.username || payload.head_commit?.committer?.name || 'Unknown';
+      
+      logger.debug(`[Background] processing commit by ${committerName} in push event.`);
+
+      // Check if commit came from a PR. If so, it will be processed elsewhere.
+      const prInfo = await this.checkIfCommitFromPR(committerName);
+      if (prInfo.isFromPR) {
+        logger.debug(`[Background] Skipping processing for PR commit in push event.`);
+        return;
+      }
+
+      // Came from direct push, parse and save the diff
+      await this.parseDiffFromPush(octokit, payload);
+  }
+
+  /**
+   * Parse diff from a push event
+   *
+   * @param octokit - Authenticated Octokit instance
+   * @param payload - Push event payload
+   */
+  private async parseDiffFromPush(octokit: any, payload: any): Promise<void> {
+    try {
+      // Extract commit information from payload
+      const commitSha = payload.after || payload.head_commit?.id;
+      const commitMessage = payload.head_commit?.message || 'No commit message';
+      const owner = payload.repository.owner?.login;
+      const repo = payload.repository.name;
+
+      if (!commitSha || !owner || !repo) {
+        logger.error('[Background] Missing required information from payload to get diff');
+        return;
+      }
+
+      // Log commit message first
+      logger.info(`[Background] 📝 Commit message: "${commitMessage}"`);
+
+      // Get the diff using GitHub API
+      logger.info(`[Background] Fetching diff for commit ${commitSha}...`);
+
+      const { data } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+        owner,
+        repo,
+        ref: commitSha,
+        headers: {
+          'x-github-api-version': '2022-11-28',
+        },
+      });
+
+      // Log the diff information
+      logger.info(`[Background] ✓ Diff retrieved for ${commitSha}`);
+      logger.info(`[Background] Files changed: ${data.files?.length || 0}`);
+      logger.info(`[Background] Stats: +${data.stats?.additions || 0} -${data.stats?.deletions || 0}`);
+
+      // Log each file's changes
+      if (data.files && data.files.length > 0) {
+        logger.info(`[Background] Changed files:`);
+        data.files.forEach((file: any) => {
+          logger.info(`[Background]   - ${file.filename} (+${file.additions} -${file.deletions})`);
+          if (file.patch) {
+            logger.debug(`[Background] Patch for ${file.filename}:\n${file.patch}`);
+          }
+        });
+      }
+
+      // Return the diff data for further processing
+      return data;
+    } catch (error) {
+      logger.error('[Background] Error parsing diff from push:', error);
+      throw error;
     }
   }
 
@@ -134,6 +220,109 @@ class BackgroundProcessor extends EventEmitter {
         }
       })
     );
+  }
+
+  /**
+   * Get commit diff from GitHub API
+   *
+   * @param octokit - Authenticated Octokit instance
+   * @param owner - Repository owner
+   * @param repo - Repository name
+   * @param commitSha - Commit SHA to get diff for
+   * @returns Commit data with diff information
+   */
+  private async getCommitDiff(
+    octokit: any,
+    owner: string,
+    repo: string,
+    commitSha: string
+  ): Promise<any> {
+    try {
+
+      
+      const { data } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+        owner,
+        repo,
+        ref: commitSha,
+        headers: {
+          'x-github-api-version': '2022-11-28',
+        },
+      });
+
+      logger.debug(`[Background] Commit diff retrieved for ${commitSha}`);
+      logger.info(`[Background] Commit diff files ${data.files}`);
+
+      // The response includes:
+      // - data.files: array of changed files with patch/diff
+      // - data.stats: { additions, deletions, total }
+      // - data.commit: commit metadata
+
+      return data;
+    } catch (error) {
+      logger.error(`Failed to get commit diff for ${commitSha}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get comparison/diff between two commits (for entire push)
+   * Use this if you want ALL changes in a push, not just the latest commit
+   *
+   * @param octokit - Authenticated Octokit instance
+   * @param owner - Repository owner
+   * @param repo - Repository name
+   * @param baseCommit - Base commit SHA (before push)
+   * @param headCommit - Head commit SHA (after push)
+   * @returns Comparison data with cumulative diff
+   */
+  private async getCommitComparison(
+    octokit: any,
+    owner: string,
+    repo: string,
+    baseCommit: string,
+    headCommit: string
+  ): Promise<any> {
+    try {
+      const { data } = await octokit.request('GET /repos/{owner}/{repo}/compare/{basehead}', {
+        owner,
+        repo,
+        basehead: `${baseCommit}...${headCommit}`,
+        headers: {
+          'x-github-api-version': '2022-11-28',
+        },
+      });
+
+      logger.debug(`[Background] Comparison retrieved: ${baseCommit}...${headCommit}`);
+
+      // The response includes:
+      // - data.files: array of ALL changed files across commits
+      // - data.commits: array of all commits in the range
+      // - data.total_commits: number of commits
+
+      return data;
+    } catch (error) {
+      logger.error(`Failed to get commit comparison ${baseCommit}...${headCommit}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if commit came from a Pull Request
+   *
+   * @param commitMessage - Commit message to parse
+   * @returns PR information if from a PR, otherwise indicates direct push
+   * 
+   */
+  private async checkIfCommitFromPR(committerName: string): Promise<{ isFromPR: boolean }> {
+    // Check if committer is web-flow (GitHub's merge system)
+    // This is reliable for all merge strategies (merge commit, squash, rebase)
+    if (committerName === 'web-flow') {
+      logger.debug(`[Background] Detected PR merge via web-flow committer`);
+      return { isFromPR: true };
+    }
+
+    // Not from a PR
+    return { isFromPR: false };
   }
 
   /**
