@@ -12,7 +12,12 @@ const config = {
   port: parseInt(process.env.DB_PORT || "5432", 10),
   user: process.env.DB_USER || "postgres",
   password: process.env.DB_PASSWORD || "postgres",
-  database: process.env.DB_NAME || "autopilot"
+  database: process.env.DB_NAME || "autopilot",
+  ssl: process.env.NODE_ENV === "production" || process.env.ENV === "production"
+    ? {
+        rejectUnauthorized: false // AWS RDS uses certificates that don't need strict validation
+      }
+    : false
 };
 
 /**

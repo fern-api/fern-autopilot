@@ -151,6 +151,7 @@ export class AutopilotDeployStack extends Stack {
         environment: {
           PORT: "3001",
           LOG_LEVEL: "warn",
+          NODE_ENV: "production",
           DB_HOST: dbInstance.dbInstanceEndpointAddress,
           DB_PORT: dbInstance.dbInstanceEndpointPort,
           DB_NAME: databaseName,
