@@ -160,7 +160,7 @@ export class AutopilotDeployStack extends Stack {
       portMappings: [{ containerPort: 3001 }],
       logging: new ecs.AwsLogDriver({
         streamPrefix: SERVICE_NAME,
-        logGroup: logGroup
+        logGroupName: logGroupName
       }),
       environment: {
         PORT: "3001",
