@@ -136,6 +136,9 @@ export class AutopilotDeployStack extends Stack {
       cluster,
       ...environmentResources,
       securityGroups: [autopilotSg],
+      taskSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC
+      },
       taskImageOptions: {
         image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
         containerName: CONTAINER_NAME,
@@ -247,6 +250,9 @@ export class AutopilotDeployStack extends Stack {
         ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MEDIUM)
         : ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.SMALL),
       vpc,
+      vpcSubnets: {
+        subnetType: ec2.SubnetType.PUBLIC
+      },
       securityGroups: [rdsSg],
       allocatedStorage: 100,
       maxAllocatedStorage: 200,
