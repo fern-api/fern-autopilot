@@ -90,9 +90,12 @@ export class AutopilotDeployStack extends Stack {
     });
     console.log(`✓ Cloud Map namespace: ${cloudmapNamespaceName}`);
 
-    console.log("\n📝 Looking up CloudWatch log group...");
+    console.log("\n📝 Creating CloudWatch log group...");
     const logGroupName = environmentInfo.logGroupInfo.logGroupName;
-    const logGroup = LogGroup.fromLogGroupName(this, "log-group", logGroupName);
+    const logGroup = new LogGroup(this, "log-group", {
+      logGroupName: logGroupName,
+      removalPolicy: RemovalPolicy.RETAIN
+    });
     console.log(`✓ Log group: ${logGroupName}`);
 
     console.log("\n🔐 Looking up SSL certificate...");
@@ -160,7 +163,7 @@ export class AutopilotDeployStack extends Stack {
       portMappings: [{ containerPort: 3001 }],
       logging: LogDriver.awsLogs({
         streamPrefix: SERVICE_NAME,
-        logGroupName: logGroupName
+        logGroup: logGroup
       }),
       environment: {
         PORT: "3001",
@@ -330,7 +333,7 @@ export class AutopilotDeployStack extends Stack {
     vpc: ec2.IVpc,
     cluster: ecs.ICluster,
     securityGroup: SecurityGroup,
-    logGroupName: string,
+    logGroup: LogGroup,
     version: string,
     dbInstance: rds.DatabaseInstance,
     databaseName: string,
@@ -350,7 +353,7 @@ export class AutopilotDeployStack extends Stack {
     migrationTaskDef.addContainer("migration-container", {
       image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
       logging: LogDriver.awsLogs({
-        logGroupName,
+        logGroup,
         streamPrefix: "migration"
       }),
       environment: {
