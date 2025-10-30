@@ -15,8 +15,7 @@ CREATE TABLE IF NOT EXISTS org_sdk_repos (
 
 -- Create indexes for common queries
 CREATE INDEX idx_org_sdk_repos_customer_org_id ON org_sdk_repos(customer_org_id);
-CREATE INDEX idx_org_sdk_repos_org_config_repo_id ON org_sdk_repos(org_config_repo_id);
-CREATE INDEX idx_org_sdk_repos_language ON org_sdk_repos(language);
+CREATE INDEX idx_org_sdk_repos_repo_type ON org_sdk_repos(repo_type);
 CREATE INDEX idx_org_sdk_repos_created_at ON org_sdk_repos(created_at DESC);
 
 -- Create trigger to automatically update updated_at
