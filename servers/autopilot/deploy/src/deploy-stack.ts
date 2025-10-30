@@ -244,8 +244,8 @@ export class AutopilotDeployStack extends Stack {
         version: rds.PostgresEngineVersion.VER_15_5
       }),
       instanceType: environmentType === EnvironmentType.Prod
-        ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.SMALL)
-        : ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MICRO),
+        ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MEDIUM)
+        : ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.SMALL),
       vpc,
       securityGroups: [rdsSg],
       allocatedStorage: 100,
