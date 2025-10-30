@@ -126,19 +126,19 @@ export class AutopilotDeployStack extends Stack {
     console.log(`  Desired count: ${environmentResources.desiredCount}`);
 
     // Create migration task definition and runner
-    console.log("\n🔄 Setting up database migration task...");
-    const migrationRunner = this.createMigrationRunner(
-      vpc,
-      cluster,
-      autopilotSg,
-      logGroupName,
-      version,
-      dbInstance,
-      databaseName,
-      envVariables,
-      environmentType
-    );
-    console.log("✓ Migration task configured");
+    // console.log("\n🔄 Setting up database migration task...");
+    // const migrationRunner = this.createMigrationRunner(
+    //   vpc,
+    //   cluster,
+    //   autopilotSg,
+    //   logGroupName,
+    //   version,
+    //   dbInstance,
+    //   databaseName,
+    //   envVariables,
+    //   environmentType
+    // );
+    // console.log("✓ Migration task configured");
 
     const domainName = getServiceDomainName(environmentType, environmentInfo);
     console.log("\n🚢 Creating Fargate task definition with health check...");
@@ -219,7 +219,7 @@ export class AutopilotDeployStack extends Stack {
     });
 
     // Make the Fargate service depend on migration completion
-    fargateService.node.addDependency(migrationRunner);
+    // fargateService.node.addDependency(migrationRunner);
     console.log("✓ Fargate service created");
 
     console.log("\n🏥 Configuring health checks...");
