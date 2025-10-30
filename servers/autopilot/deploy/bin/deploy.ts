@@ -43,7 +43,10 @@ async function main() {
           environmentType,
           dev2Info,
           {
-            GITHUB_TOKEN: getEnvVarOrThrow("GITHUB_TOKEN")
+            GITHUB_TOKEN: getEnvVarOrThrow("GITHUB_TOKEN"),
+            APP_ID: getEnvVarOrThrow("APP_ID"),
+            WEBHOOK_SECRET: getEnvVarOrThrow("WEBHOOK_SECRET"),
+            PRIVATE_KEY: getEnvVarOrThrow("PRIVATE_KEY")
           },
           {
             env: { account: "985111089818", region: "us-east-1" }
@@ -66,7 +69,10 @@ async function main() {
           environmentType,
           prodInfo,
           {
-            GITHUB_TOKEN: getEnvVarOrThrow("GITHUB_TOKEN")
+            GITHUB_TOKEN: getEnvVarOrThrow("GITHUB_TOKEN"),
+            APP_ID: getEnvVarOrThrow("APP_ID"),
+            WEBHOOK_SECRET: getEnvVarOrThrow("WEBHOOK_SECRET"),
+            PRIVATE_KEY: getEnvVarOrThrow("PRIVATE_KEY")
           },
           {
             env: { account: "985111089818", region: "us-east-1" }
