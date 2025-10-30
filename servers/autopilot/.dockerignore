@@ -1,0 +1,52 @@
+# Node modules (will be installed in container)
+node_modules
+
+# Build output
+dist
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Private keys
+*.pem
+private-key.pem
+
+# Documentation
+README.md
+CLAUDE.md
+
+# CI/CD
+.github
+
+# Docker files (not needed in image)
+Dockerfile
+Dockerfile.*
+docker-compose.yml
+
+# Servers directory (we only need the source files, not other server builds)
+servers
+
+# Development files
+*.dev.*
+.cursorignore
+

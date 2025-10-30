@@ -1,6 +1,6 @@
-import yaml from 'js-yaml';
-import logger from '../logger.ts';
-import type { BaseActionParams } from './types.ts';
+import yaml from "js-yaml";
+import logger from "../logger.ts";
+import type { BaseActionParams } from "./types.ts";
 
 /**
  * Parameters for fetching generators.yml files
@@ -29,42 +29,39 @@ export interface FetchGeneratorsResult {
  * at a specific commit or HEAD of main
  */
 export async function fetchGenerators(params: FetchGeneratorsParams): Promise<FetchGeneratorsResult> {
-  const { octokit, owner, repo, ref = 'main' } = params;
+  const { octokit, owner, repo, ref = "main" } = params;
 
   logger.info(`Fetching generators.yml files from ${owner}/${repo} at ref: ${ref}`);
 
   try {
     // Get the commit for the ref (works with branch names, tags, or commit SHAs)
-    const { data: commitData } = await octokit.request('GET /repos/{owner}/{repo}/commits/{ref}', {
+    const { data: commitData } = await octokit.request("GET /repos/{owner}/{repo}/commits/{ref}", {
       owner,
       repo,
       ref,
       headers: {
-        'x-github-api-version': '2022-11-28',
-      },
+        "x-github-api-version": "2022-11-28"
+      }
     });
 
     const commitSha = commitData.sha;
     logger.debug(`Resolved ref ${ref} to commit ${commitSha}`);
 
     // Get the tree recursively to find all files
-    const { data: treeData } = await octokit.request('GET /repos/{owner}/{repo}/git/trees/{tree_sha}', {
+    const { data: treeData } = await octokit.request("GET /repos/{owner}/{repo}/git/trees/{tree_sha}", {
       owner,
       repo,
       tree_sha: commitSha,
-      recursive: 'true',
+      recursive: "true",
       headers: {
-        'x-github-api-version': '2022-11-28',
-      },
+        "x-github-api-version": "2022-11-28"
+      }
     });
 
     // Filter for generators.yml files in fern/ directory
     const generatorFiles = treeData.tree.filter(
       (item: { type?: string; path?: string; sha?: string }) =>
-        item.type === 'blob' &&
-        item.path &&
-        item.path.startsWith('fern/') &&
-        item.path.endsWith('generators.yml')
+        item.type === "blob" && item.path && item.path.startsWith("fern/") && item.path.endsWith("generators.yml")
     );
 
     logger.info(`Found ${generatorFiles.length} generators.yml file(s) in fern/ directory`);
@@ -79,17 +76,17 @@ export async function fetchGenerators(params: FetchGeneratorsParams): Promise<Fe
 
       try {
         // Fetch the blob content
-        const { data: blobData } = await octokit.request('GET /repos/{owner}/{repo}/git/blobs/{file_sha}', {
+        const { data: blobData } = await octokit.request("GET /repos/{owner}/{repo}/git/blobs/{file_sha}", {
           owner,
           repo,
           file_sha: file.sha,
           headers: {
-            'x-github-api-version': '2022-11-28',
-          },
+            "x-github-api-version": "2022-11-28"
+          }
         });
 
         // Decode base64 content
-        const content = Buffer.from(blobData.content, 'base64').toString('utf-8');
+        const content = Buffer.from(blobData.content, "base64").toString("utf-8");
 
         // Parse YAML
         const parsed = yaml.load(content) as Record<string, any>;
@@ -97,7 +94,7 @@ export async function fetchGenerators(params: FetchGeneratorsParams): Promise<Fe
         // Add filepath property
         generators.push({
           filepath: file.path,
-          ...parsed,
+          ...parsed
         });
 
         logger.debug(`Successfully parsed ${file.path}`);
@@ -111,7 +108,7 @@ export async function fetchGenerators(params: FetchGeneratorsParams): Promise<Fe
 
     return { generators };
   } catch (error) {
-    if (error && typeof error === 'object' && 'response' in error) {
+    if (error && typeof error === "object" && "response" in error) {
       const err = error as { response?: { status: number; data: { message: string } } };
       if (err.response) {
         logger.error(
@@ -119,7 +116,7 @@ export async function fetchGenerators(params: FetchGeneratorsParams): Promise<Fe
         );
       }
     } else {
-      logger.error('Error fetching generators:', error);
+      logger.error("Error fetching generators:", error);
     }
     throw error;
   }

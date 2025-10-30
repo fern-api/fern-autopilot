@@ -188,3 +188,13 @@ pnpm tunnel
   - On your Dev App settings, go to the **Advanced** tab. You should see a package under **Recent Deliveries**. You can click on the package to get information about it (to verify it is from the push you just made). This verifies the connection of your Dummy Repo to your Dev App.
   - In your terminal where you are receiving docker logs, you should see a log about the recent push. This verifies the connection of your Dev App to your locally running instance of the **Autopilot** code.
 3. If at any point you need to restart your tunnel, note that you will need to update your Dev App's **Webhook URL** (be sure to include the appended `/api/webhook`). You won't need to update these settings if you are using the **TUNNEL_SUBDOMAIN** env variable for a stable link.
+
+## Testing with the [Development] Fern Bot Github App
+To set up the app I:
+1. created a new webhook secret (should be rotated and saved in 1Pass before production use)
+2. Disabled SSL for now (so I can use my local server without need to setup encryption)
+3. Created a new private key (will delete before production use and create a real one to be stored in a more secure location)
+4. Initialized the local server with `docker compose up -d --build` or `pnpm docker:up`
+5. Started a local tunnel with `pnpm tunnel`
+6. Updated the [Github App Settings](https://github.com/organizations/fern-demo/settings/apps/development-fern-autopilot) with the tunnel URL as the webhook endpoint (e.g. https://short-rings-burn.loca.lt/api/webhook)
+7. Restarted the app and interacted with the repo that has "[Development] Fern Bot Github App" installed

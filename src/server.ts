@@ -23,7 +23,7 @@ function loadPrivateKey(): string {
   } else if (privateKeyPath) {
     return fs.readFileSync(privateKeyPath, "utf8");
   } else {
-    throw new Error('Either PRIVATE_KEY or PRIVATE_KEY_PATH must be set in environment variables');
+    throw new Error("Either PRIVATE_KEY or PRIVATE_KEY_PATH must be set in environment variables");
   }
 }
 
@@ -35,10 +35,10 @@ function validateEnvironment(): { appId: string; webhookSecret: string; privateK
   const webhookSecret = process.env.WEBHOOK_SECRET;
 
   if (!appId) {
-    throw new Error('APP_ID is required in environment variables');
+    throw new Error("APP_ID is required in environment variables");
   }
   if (!webhookSecret) {
-    throw new Error('WEBHOOK_SECRET is required in environment variables');
+    throw new Error("WEBHOOK_SECRET is required in environment variables");
   }
 
   const privateKey = loadPrivateKey();
@@ -55,7 +55,7 @@ function createApp(appId: string, privateKey: string, webhookSecret: string): Ap
     privateKey: privateKey,
     webhooks: {
       secret: webhookSecret
-    },
+    }
   });
 
   // Register webhook handlers
@@ -78,27 +78,51 @@ function createApp(appId: string, privateKey: string, webhookSecret: string): Ap
  */
 function startServer(app: App): http.Server {
   const port = Number(process.env.PORT) || 3000;
-  const host = process.env.HOST || 'localhost';
+  const host = process.env.HOST || "localhost";
   const path = "/api/webhook";
   const localWebhookUrl = `http://${host}:${port}${path}`;
 
   const middleware = createNodeMiddleware(app.webhooks, { path });
 
-  const server = http.createServer((req, res) => {
-    // Health check endpoint
-    if (req.url === '/health' && req.method === 'GET') {
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
-      return;
-    }
+  const server = http
+    .createServer(async (req, res) => {
+      // Health check endpoint
+      if (req.url === "/health" && req.method === "GET") {
+        try {
+          // Test database connection
+          await testConnection();
 
-    // Pass all other requests to webhook middleware
-    middleware(req, res);
-  }).listen(port, () => {
-    logger.info(`Server is listening for events at: ${localWebhookUrl}`);
-    logger.info(`Health check available at: http://${host}:${port}/health`);
-    logger.info('Press Ctrl + C to quit.');
-  });
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              status: "ok",
+              database: "connected",
+              timestamp: new Date().toISOString()
+            })
+          );
+        } catch (error) {
+          logger.error("Health check failed - database connection error:", error);
+          res.writeHead(503, { "Content-Type": "application/json" });
+          res.end(
+            JSON.stringify({
+              status: "unhealthy",
+              database: "disconnected",
+              error: error instanceof Error ? error.message : "Unknown error",
+              timestamp: new Date().toISOString()
+            })
+          );
+        }
+        return;
+      }
+
+      // Pass all other requests to webhook middleware
+      middleware(req, res);
+    })
+    .listen(port, () => {
+      logger.info(`Server is listening for events at: ${localWebhookUrl}`);
+      logger.info(`Health check available at: http://${host}:${port}/health`);
+      logger.info("Press Ctrl + C to quit.");
+    });
 
   return server;
 }
@@ -107,7 +131,7 @@ function startServer(app: App): http.Server {
  * Initialize and start the application
  */
 export async function initializeServer(): Promise<http.Server> {
-  logger.info('Starting GitHub App webhook server...');
+  logger.info("Starting GitHub App webhook server...");
 
   // Validate environment
   const { appId, webhookSecret, privateKey } = validateEnvironment();
@@ -130,7 +154,7 @@ export async function initializeServer(): Promise<http.Server> {
 
     // Close HTTP server
     server.close(() => {
-      logger.info('HTTP server closed');
+      logger.info("HTTP server closed");
     });
 
     // Close database connection
@@ -139,8 +163,8 @@ export async function initializeServer(): Promise<http.Server> {
     process.exit(0);
   };
 
-  process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 
   return server;
 }

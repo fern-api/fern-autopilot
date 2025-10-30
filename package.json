@@ -4,13 +4,17 @@
   "description": "Ferns Autopilot service for pushing updates to customers and tracking generation workflows",
   "type": "module",
   "main": "src/index.ts",
-  "packageManager": "pnpm@9.0.0",
+  "packageManager": "pnpm@10.11.0",
   "scripts": {
     "compile": "tsc --noEmit",
     "start": "node --experimental-strip-types src/index.ts",
     "dev": "node --experimental-strip-types --watch src/index.ts",
     "watch": "tsc --noEmit --watch",
     "tunnel": "node scripts/tests/tunnel.js",
+    "lint": "pnpm biome lint",
+    "format:check": "pnpm biome format",
+    "format": "pnpm biome format --fix",
+    "check": "pnpm biome check",
     "docker:build": "docker build -t fern-autopilot-dev:latest .",
     "docker:run": "docker run -p 3000:3000 --env-file .env fern-autopilot-dev:latest",
     "docker:up": "docker-compose up -d",
@@ -27,11 +31,7 @@
     "db:psql": "docker-compose exec postgres psql -U ${DB_USER:-postgres} -d ${DB_NAME:-autopilot}",
     "db:reset": "docker-compose down -v && docker-compose up -d postgres && sleep 5 && pnpm run db:migrate:up"
   },
-  "keywords": [
-    "github",
-    "webhook",
-    "octokit"
-  ],
+  "keywords": ["github", "webhook", "octokit"],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -45,6 +45,7 @@
     "winston": "^3.18.3"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.1",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.0",
     "@types/pg": "^8.15.5",

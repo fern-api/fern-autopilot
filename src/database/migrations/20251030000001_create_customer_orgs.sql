@@ -1,21 +1,18 @@
 -- +goose Up
--- Create workflow_runs table
--- This table stores GitHub Actions workflow run metadata for tracking and monitoring
+-- Create customer_orgs table
+-- This table stores customer organizations using Fern
 
-CREATE TABLE IF NOT EXISTS workflow_runs (
+CREATE TABLE IF NOT EXISTS customer_orgs (
     id SERIAL PRIMARY KEY,
-    workflow_id BIGINT NOT NULL,
-    workflow_url TEXT NOT NULL,
-    org TEXT NOT NULL,
-    repo TEXT NOT NULL,
+    org_name TEXT NOT NULL UNIQUE,
+    github_org TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
 
 -- Create indexes for common queries
-CREATE INDEX idx_workflow_runs_workflow_id ON workflow_runs(workflow_id);
-CREATE INDEX idx_workflow_runs_org_repo ON workflow_runs(org, repo);
-CREATE INDEX idx_workflow_runs_created_at ON workflow_runs(created_at DESC);
+CREATE INDEX idx_customer_orgs_github_org ON customer_orgs(github_org);
+CREATE INDEX idx_customer_orgs_created_at ON customer_orgs(created_at DESC);
 
 -- Create updated_at trigger function
 -- +goose StatementBegin
@@ -29,13 +26,13 @@ $$ language 'plpgsql';
 -- +goose StatementEnd
 
 -- Create trigger to automatically update updated_at
-CREATE TRIGGER update_workflow_runs_updated_at
-    BEFORE UPDATE ON workflow_runs
+CREATE TRIGGER update_customer_orgs_updated_at
+    BEFORE UPDATE ON customer_orgs
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
 -- +goose Down
 -- Drop trigger and function first, then table
-DROP TRIGGER IF EXISTS update_workflow_runs_updated_at ON workflow_runs;
+DROP TRIGGER IF EXISTS update_customer_orgs_updated_at ON customer_orgs;
 DROP FUNCTION IF EXISTS update_updated_at_column();
-DROP TABLE IF EXISTS workflow_runs;
+DROP TABLE IF EXISTS customer_orgs;

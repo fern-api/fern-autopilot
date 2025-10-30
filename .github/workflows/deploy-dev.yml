@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: Fern Dev
     env:
-      AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+      AWS_ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       GITHUB_TOKEN: ${{ secrets.FERN_GITHUB_TOKEN }}
@@ -27,13 +27,21 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10.11.0
+          version: 10.11.0 # NOTE: must match version in package.json
           run_install: false
       - name: Deploy to Dev
+        env:
+          ENVIRONMENT: "dev2"
+          NODE_AUTH_TOKEN: ${{ secrets.FERN_NPM_TOKEN }}
+          # Env vars for the ECS task
+          APP_ID: ${{ vars.APP_ID }}
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          # DB credentials passed in directly from the CDK stack
         run: |
-          git_version="$(scripts/olimar-version.sh)"
-          cd servers/olimar
+          git_version="$(scripts/get-version.sh)"
+          cd servers/autopilot
           ./scripts/create_docker.sh "${git_version}"
           cd deploy
           pnpm install
-          VERSION="${git_version}" pnpm dlx aws-cdk@2 deploy olimar-dev2 --require-approval never --progress events
+          VERSION="${git_version}" pnpm dlx aws-cdk@2 deploy autopilot-dev2 --require-approval never --progress events
