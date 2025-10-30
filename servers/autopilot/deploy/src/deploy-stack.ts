@@ -131,7 +131,7 @@ export class AutopilotDeployStack extends Stack {
       vpc,
       cluster,
       autopilotSg,
-      logGroup,
+      logGroupName,
       version,
       dbInstance,
       databaseName,
@@ -158,7 +158,7 @@ export class AutopilotDeployStack extends Stack {
       image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
       containerName: CONTAINER_NAME,
       portMappings: [{ containerPort: 3001 }],
-      logging: new ecs.AwsLogDriver({
+      logging: LogDriver.awsLogs({
         streamPrefix: SERVICE_NAME,
         logGroupName: logGroupName
       }),
@@ -330,7 +330,7 @@ export class AutopilotDeployStack extends Stack {
     vpc: ec2.IVpc,
     cluster: ecs.ICluster,
     securityGroup: SecurityGroup,
-    logGroup: LogGroup,
+    logGroupName: string,
     version: string,
     dbInstance: rds.DatabaseInstance,
     databaseName: string,
@@ -350,7 +350,7 @@ export class AutopilotDeployStack extends Stack {
     migrationTaskDef.addContainer("migration-container", {
       image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
       logging: LogDriver.awsLogs({
-        logGroup,
+        logGroupName,
         streamPrefix: "migration"
       }),
       environment: {
