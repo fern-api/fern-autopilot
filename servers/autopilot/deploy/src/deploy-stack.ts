@@ -244,7 +244,7 @@ export class AutopilotDeployStack extends Stack {
 
     const dbInstance = new rds.DatabaseInstance(this, "autopilot-db-instance", {
       engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_15_5
+        version: rds.PostgresEngineVersion.VER_16_6
       }),
       instanceType: environmentType === EnvironmentType.Prod
         ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MEDIUM)
@@ -276,7 +276,8 @@ export class AutopilotDeployStack extends Stack {
     dbInstance.connections.allowFrom(autopilotSg, Port.tcp(5432), "Allow Fargate tasks to connect to RDS");
 
     console.log(`✓ RDS instance created: ${databaseName}`);
-    console.log(`✓ Instance type: ${environmentType === EnvironmentType.Prod ? 't4g.small' : 't4g.micro'}`);
+    console.log(`✓ Instance type: ${environmentType === EnvironmentType.Prod ? 't4g.medium' : 't4g.small'}`);
+    console.log(`✓ PostgreSQL version: 16.6`);
     console.log(`✓ Storage: 100GB (GP3, auto-scaling up to 200GB)`);
     console.log(`✓ Default database: ${databaseName}`);
     console.log(`✓ Database user: ${dbUsername}`);
