@@ -124,43 +124,62 @@ export class AutopilotDeployStack extends Stack {
     console.log(`  Desired count: ${environmentResources.desiredCount}`);
 
     const domainName = getServiceDomainName(environmentType, environmentInfo);
-    console.log("\n🚢 Creating Fargate service...");
-    console.log(`  Service name: ${SERVICE_NAME}`);
+    console.log("\n🚢 Creating Fargate task definition with health check...");
     console.log(`  Container: ${CONTAINER_NAME}`);
     console.log(`  Image: ../autopilot:${version}.tar`);
+
+    // Create task definition manually to configure health check
+    const taskDefinition = new ecs.FargateTaskDefinition(this, "TaskDef", {
+      ...environmentResources
+    });
+
+    // Grant access to secrets
+    dbInstance.secret?.grantRead(taskDefinition.taskRole);
+
+    // Add container with health check
+    taskDefinition.addContainer(CONTAINER_NAME, {
+      image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
+      containerName: CONTAINER_NAME,
+      portMappings: [{ containerPort: 3001 }],
+      logging: LogDriver.awsLogs({
+        logGroup,
+        streamPrefix: SERVICE_NAME
+      }),
+      environment: {
+        PORT: "3001",
+        LOG_LEVEL: "warn",
+        NODE_ENV: "production",
+        DB_HOST: dbInstance.dbInstanceEndpointAddress,
+        DB_PORT: dbInstance.dbInstanceEndpointPort,
+        DB_NAME: databaseName,
+        ...envVariables
+      },
+      secrets: {
+        DB_USER: ecs.Secret.fromSecretsManager(dbInstance.secret!, "username"),
+        DB_PASSWORD: ecs.Secret.fromSecretsManager(dbInstance.secret!, "password")
+      },
+      healthCheck: {
+        command: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""],
+        interval: Duration.seconds(30),
+        timeout: Duration.seconds(5),
+        retries: 3,
+        startPeriod: Duration.seconds(60)
+      }
+    });
+    console.log("✓ Task definition created with container health check");
+
+    console.log("\n🚢 Creating Fargate service...");
+    console.log(`  Service name: ${SERVICE_NAME}`);
     console.log(`  Domain: ${domainName}`);
     console.log(`  Execute command enabled: ${environmentType !== EnvironmentType.Prod}`);
 
     const fargateService = new ApplicationLoadBalancedFargateService(this, SERVICE_NAME, {
       serviceName: SERVICE_NAME,
       cluster,
-      ...environmentResources,
+      taskDefinition,
       securityGroups: [autopilotSg],
       taskSubnets: {
         subnetType: ec2.SubnetType.PUBLIC
-      },
-      taskImageOptions: {
-        image: ContainerImage.fromTarball(`../autopilot:${version}.tar`),
-        containerName: CONTAINER_NAME,
-        containerPort: 3001,
-        enableLogging: true,
-        logDriver: LogDriver.awsLogs({
-          logGroup,
-          streamPrefix: SERVICE_NAME
-        }),
-        environment: {
-          PORT: "3001",
-          LOG_LEVEL: "warn",
-          NODE_ENV: "production",
-          DB_HOST: dbInstance.dbInstanceEndpointAddress,
-          DB_PORT: dbInstance.dbInstanceEndpointPort,
-          DB_NAME: databaseName,
-          ...envVariables
-        },
-        secrets: {
-          DB_USER: ecs.Secret.fromSecretsManager(dbInstance.secret!, "username"),
-          DB_PASSWORD: ecs.Secret.fromSecretsManager(dbInstance.secret!, "password")
-        }
       },
       assignPublicIp: true,
       publicLoadBalancer: true,
@@ -181,20 +200,7 @@ export class AutopilotDeployStack extends Stack {
             }
           : undefined
     });
-    console.log("✓ Fargate service created");
-
-    // Add container-level health check
-    const container = fargateService.taskDefinition.defaultContainer;
-    if (container) {
-      container.addHealthCheck({
-        command: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""],
-        interval: Duration.seconds(30),
-        timeout: Duration.seconds(5),
-        retries: 3,
-        startPeriod: Duration.seconds(60)
-      });
-      console.log("✓ Container health check added");
-    }
+    console.log("✓ Fargate service created")
 
     console.log("\n🏥 Configuring health checks...");
     fargateService.targetGroup.setAttribute("deregistration_delay.timeout_seconds", "30");
