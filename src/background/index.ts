@@ -5,4 +5,4 @@
  * using Node.js EventEmitter - no external dependencies required
  */
 
-export { initProcessor, getProcessor } from './processor.ts';
+export { initProcessor, getProcessor } from "./processor.ts";

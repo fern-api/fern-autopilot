@@ -179,7 +179,10 @@ export class AutopilotDeployStack extends Stack {
         DB_PASSWORD: ecs.Secret.fromSecretsManager(dbInstance.secret!, "password")
       },
       healthCheck: {
-        command: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""],
+        command: [
+          "CMD-SHELL",
+          "node -e \"require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""
+        ],
         interval: Duration.seconds(30),
         timeout: Duration.seconds(5),
         retries: 3,
@@ -289,9 +292,10 @@ export class AutopilotDeployStack extends Stack {
       engine: rds.DatabaseInstanceEngine.postgres({
         version: rds.PostgresEngineVersion.VER_16_6
       }),
-      instanceType: environmentType === EnvironmentType.Prod
-        ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MEDIUM)
-        : ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.SMALL),
+      instanceType:
+        environmentType === EnvironmentType.Prod
+          ? ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MEDIUM)
+          : ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.SMALL),
       vpc,
       vpcSubnets: {
         subnetType: ec2.SubnetType.PUBLIC
@@ -306,9 +310,7 @@ export class AutopilotDeployStack extends Stack {
       }),
       removalPolicy: environmentType === EnvironmentType.Prod ? RemovalPolicy.SNAPSHOT : RemovalPolicy.DESTROY,
       deletionProtection: environmentType === EnvironmentType.Prod,
-      backupRetention: environmentType === EnvironmentType.Prod
-        ? Duration.days(7)
-        : Duration.days(1),
+      backupRetention: environmentType === EnvironmentType.Prod ? Duration.days(7) : Duration.days(1),
       publiclyAccessible: false,
       cloudwatchLogsExports: ["postgresql"],
       storageEncrypted: true,
@@ -319,7 +321,7 @@ export class AutopilotDeployStack extends Stack {
     dbInstance.connections.allowFrom(autopilotSg, Port.tcp(5432), "Allow Fargate tasks to connect to RDS");
 
     console.log(`✓ RDS instance created: ${databaseName}`);
-    console.log(`✓ Instance type: ${environmentType === EnvironmentType.Prod ? 't4g.medium' : 't4g.small'}`);
+    console.log(`✓ Instance type: ${environmentType === EnvironmentType.Prod ? "t4g.medium" : "t4g.small"}`);
     console.log(`✓ PostgreSQL version: 16.6`);
     console.log(`✓ Storage: 100GB (GP3, auto-scaling up to 200GB)`);
     console.log(`✓ Default database: ${databaseName}`);

@@ -17,13 +17,13 @@ if (subdomain) {
 }
 
 // Spawn localtunnel process
-const args = ['--port', port];
+const args = ["--port", port];
 if (subdomain) {
-  args.push('--subdomain', subdomain);
+  args.push("--subdomain", subdomain);
 }
 
-const lt = spawn('lt', args, {
-  stdio: 'inherit',
+const lt = spawn("lt", args, {
+  stdio: "inherit",
   shell: true
 });
 

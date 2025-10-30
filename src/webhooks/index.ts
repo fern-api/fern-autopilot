@@ -1,7 +1,7 @@
-import { App } from 'octokit';
+import { App } from "octokit";
 
-import logger from '../logger.ts';
-import { getProcessor } from '../background/index.ts';
+import logger from "../logger.ts";
+import { getProcessor } from "../background/index.ts";
 
 // This function registers all webhook event handlers on the app instance
 export function registerWebhookHandlers(app: App) {
@@ -22,21 +22,21 @@ export function registerWebhookHandlers(app: App) {
 
   // This adds an event handler for push events.
   // Dispatches to background processor (non-blocking).
-  app.webhooks.on('push', async ({ payload }) => {
+  app.webhooks.on("push", async ({ payload }) => {
     // Log the entire payload at debug level
-    logger.debug('Push event payload:', JSON.stringify(payload, null, 2));
+    logger.debug("Push event payload:", JSON.stringify(payload, null, 2));
 
     // Process in background - returns immediately (non-blocking)
     const processor = getProcessor();
-    await processor.enqueue('push', payload);
+    await processor.enqueue("push", payload);
   });
 
   // This adds an event handler for workflow_run events.
   // Dispatches to background processor (non-blocking).
-  app.webhooks.on('workflow_run', async ({ payload }) => {
+  app.webhooks.on("workflow_run", async ({ payload }) => {
     // Process in background - returns immediately (non-blocking)
     const processor = getProcessor();
-    await processor.enqueue('workflow_run', payload);
+    await processor.enqueue("workflow_run", payload);
   });
 
   // This adds an event handler for workflow_dispatch events.

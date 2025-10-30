@@ -93,20 +93,24 @@ function startServer(app: App): http.Server {
           await testConnection();
 
           res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({
-            status: "ok",
-            database: "connected",
-            timestamp: new Date().toISOString()
-          }));
+          res.end(
+            JSON.stringify({
+              status: "ok",
+              database: "connected",
+              timestamp: new Date().toISOString()
+            })
+          );
         } catch (error) {
           logger.error("Health check failed - database connection error:", error);
           res.writeHead(503, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({
-            status: "unhealthy",
-            database: "disconnected",
-            error: error instanceof Error ? error.message : "Unknown error",
-            timestamp: new Date().toISOString()
-          }));
+          res.end(
+            JSON.stringify({
+              status: "unhealthy",
+              database: "disconnected",
+              error: error instanceof Error ? error.message : "Unknown error",
+              timestamp: new Date().toISOString()
+            })
+          );
         }
         return;
       }

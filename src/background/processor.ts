@@ -1,13 +1,13 @@
-import { EventEmitter } from 'events';
-import { App } from 'octokit';
-import logger from '../logger.ts';
-import { dispatchWorkflow } from '../actions/index.ts';
-import { getClient } from '../database/client.ts';
+import { EventEmitter } from "events";
+import { App } from "octokit";
+import logger from "../logger.ts";
+import { dispatchWorkflow } from "../actions/index.ts";
+import { getClient } from "../database/client.ts";
 import {
   createWorkflowRun,
   getWorkflowRunByWorkflowId,
   updateWorkflowRunStatus
-} from '../database/generated-queries/workflow_runs_sql.ts';
+} from "../database/generated-queries/workflow_runs_sql.ts";
 
 /**
  * Background task processor using Node.js EventEmitter
@@ -26,8 +26,8 @@ class BackgroundProcessor extends EventEmitter {
 
   private setupHandlers() {
     // Register event handlers for each webhook type
-    this.on('push', (data) => this.processPush(data));
-    this.on('workflow_run', (data) => this.processWorkflowRun(data));
+    this.on("push", (data) => this.processPush(data));
+    this.on("workflow_run", (data) => this.processWorkflowRun(data));
   }
 
   /**
@@ -60,7 +60,7 @@ class BackgroundProcessor extends EventEmitter {
       const ref = payload.ref;
 
       if (!owner) {
-        logger.error('No repository owner found in payload');
+        logger.error("No repository owner found in payload");
         return;
       }
 
@@ -72,7 +72,7 @@ class BackgroundProcessor extends EventEmitter {
         : await this.app.getInstallationOctokit(payload.installation.id);
 
       // Get commit SHA from payload
-      const commitSha = payload.after || payload.head_commit?.id || 'unknown';
+      const commitSha = payload.after || payload.head_commit?.id || "unknown";
 
       // Handle any workflow runs
       await this.handleWorkflows(octokit, owner, repo, ref, commitSha);
@@ -80,7 +80,7 @@ class BackgroundProcessor extends EventEmitter {
       const duration = Date.now() - startTime;
       logger.info(`[Background] Completed push event in ${duration}ms`);
     } catch (error) {
-      logger.error('[Background] Error processing push event:', error);
+      logger.error("[Background] Error processing push event:", error);
     } finally {
       this.activeJobs--;
     }
@@ -94,25 +94,25 @@ class BackgroundProcessor extends EventEmitter {
     commitSha: string
   ): Promise<void> {
     // List all workflows
-    const { data: workflows } = await octokit.request('GET /repos/{owner}/{repo}/actions/workflows', {
+    const { data: workflows } = await octokit.request("GET /repos/{owner}/{repo}/actions/workflows", {
       owner,
       repo,
-      headers: { 'x-github-api-version': '2022-11-28' },
+      headers: { "x-github-api-version": "2022-11-28" }
     });
 
     logger.info(`Found ${workflows.total_count} workflow(s) in ${owner}/${repo}`);
 
     // Filter SDK workflows
     const sdkWorkflows = workflows.workflows.filter((workflow: any) => {
-      const nameMatch = workflow.name.toLowerCase().includes('sdk');
-      const pathMatch = workflow.path.toLowerCase().includes('sdk');
-      return (nameMatch || pathMatch) && workflow.state === 'active';
+      const nameMatch = workflow.name.toLowerCase().includes("sdk");
+      const pathMatch = workflow.path.toLowerCase().includes("sdk");
+      return (nameMatch || pathMatch) && workflow.state === "active";
     });
 
     logger.info(`Found ${sdkWorkflows.length} SDK workflow(s) to dispatch`);
 
     if (sdkWorkflows.length === 0) {
-      logger.info('No SDK workflows found to dispatch');
+      logger.info("No SDK workflows found to dispatch");
       return;
     }
 
@@ -126,8 +126,8 @@ class BackgroundProcessor extends EventEmitter {
             repo,
             workflow: { id: workflow.id, name: workflow.name, path: workflow.path },
             ref,
-            inputs: { version: '1.0.0' },
-            commitSha,
+            inputs: { version: "1.0.0" },
+            commitSha
           });
         } catch (error) {
           logger.error(`Failed to dispatch workflow ${workflow.name}:`, error);
@@ -151,7 +151,7 @@ class BackgroundProcessor extends EventEmitter {
       const workflowRun = payload.workflow_run;
 
       if (!owner) {
-        logger.error('No repository owner found in workflow_run payload');
+        logger.error("No repository owner found in workflow_run payload");
         return;
       }
 
@@ -159,14 +159,14 @@ class BackgroundProcessor extends EventEmitter {
 
       // Validate required fields
       if (!workflowRun.name || !workflowRun.head_sha || !workflowRun.head_branch) {
-        logger.warn('Workflow run missing required fields, skipping');
+        logger.warn("Workflow run missing required fields, skipping");
         return;
       }
 
       // Filter to only track SDK workflows
       const workflowName = workflowRun.name.toLowerCase();
-      const workflowPath = workflowRun.path?.toLowerCase() || '';
-      const isSdkWorkflow = workflowName.includes('sdk') || workflowPath.includes('sdk');
+      const workflowPath = workflowRun.path?.toLowerCase() || "";
+      const isSdkWorkflow = workflowName.includes("sdk") || workflowPath.includes("sdk");
 
       if (!isSdkWorkflow) {
         logger.debug(`Skipping non-SDK workflow: ${workflowRun.name}`);
@@ -194,15 +194,15 @@ class BackgroundProcessor extends EventEmitter {
 
       // Update status and conclusion
       const statusMap: Record<string, string> = {
-        'queued': 'queued',
-        'in_progress': 'in_progress',
-        'completed': 'completed',
-        'waiting': 'waiting',
-        'requested': 'requested',
-        'pending': 'pending'
+        queued: "queued",
+        in_progress: "in_progress",
+        completed: "completed",
+        waiting: "waiting",
+        requested: "requested",
+        pending: "pending"
       };
 
-      const dbStatus = statusMap[workflowRun.status] || 'queued';
+      const dbStatus = statusMap[workflowRun.status] || "queued";
       const conclusion = workflowRun.conclusion || null;
 
       await updateWorkflowRunStatus(db, {
@@ -211,10 +211,10 @@ class BackgroundProcessor extends EventEmitter {
         conclusion: conclusion
       });
 
-      logger.info(`Updated workflow run status to: ${dbStatus}${conclusion ? `, conclusion: ${conclusion}` : ''}`);
+      logger.info(`Updated workflow run status to: ${dbStatus}${conclusion ? `, conclusion: ${conclusion}` : ""}`);
 
-      if (action === 'completed') {
-        if (workflowRun.conclusion === 'success') {
+      if (action === "completed") {
+        if (workflowRun.conclusion === "success") {
           logger.info(`✓ SDK workflow ${workflowRun.name} completed successfully`);
         } else {
           logger.warn(`✗ SDK workflow ${workflowRun.name} completed with conclusion: ${workflowRun.conclusion}`);
@@ -224,7 +224,7 @@ class BackgroundProcessor extends EventEmitter {
       const duration = Date.now() - startTime;
       logger.info(`[Background] Completed workflow_run event in ${duration}ms`);
     } catch (error) {
-      logger.error('[Background] Error processing workflow_run event:', error);
+      logger.error("[Background] Error processing workflow_run event:", error);
     } finally {
       this.activeJobs--;
     }
@@ -236,7 +236,7 @@ class BackgroundProcessor extends EventEmitter {
   getStatus() {
     return {
       activeJobs: this.activeJobs,
-      maxConcurrency: this.maxConcurrency,
+      maxConcurrency: this.maxConcurrency
     };
   }
 }
@@ -249,7 +249,7 @@ let processor: BackgroundProcessor | null = null;
 export function initProcessor(app: App): BackgroundProcessor {
   if (!processor) {
     processor = new BackgroundProcessor(app);
-    logger.info('Background processor initialized');
+    logger.info("Background processor initialized");
   }
   return processor;
 }
@@ -259,7 +259,7 @@ export function initProcessor(app: App): BackgroundProcessor {
  */
 export function getProcessor(): BackgroundProcessor {
   if (!processor) {
-    throw new Error('Background processor not initialized');
+    throw new Error("Background processor not initialized");
   }
   return processor;
 }
