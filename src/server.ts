@@ -85,11 +85,29 @@ function startServer(app: App): http.Server {
   const middleware = createNodeMiddleware(app.webhooks, { path });
 
   const server = http
-    .createServer((req, res) => {
+    .createServer(async (req, res) => {
       // Health check endpoint
       if (req.url === "/health" && req.method === "GET") {
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ status: "ok", timestamp: new Date().toISOString() }));
+        try {
+          // Test database connection
+          await testConnection();
+
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            status: "ok",
+            database: "connected",
+            timestamp: new Date().toISOString()
+          }));
+        } catch (error) {
+          logger.error("Health check failed - database connection error:", error);
+          res.writeHead(503, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({
+            status: "unhealthy",
+            database: "disconnected",
+            error: error instanceof Error ? error.message : "Unknown error",
+            timestamp: new Date().toISOString()
+          }));
+        }
         return;
       }
 
