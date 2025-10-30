@@ -31,6 +31,7 @@ jobs:
           run_install: false
       - name: Deploy to Dev
         env:
+          ENVIRONMENT: "dev2"
           NODE_AUTH_TOKEN: ${{ secrets.FERN_NPM_TOKEN }}
           # Env vars for the ECS task
           APP_ID: ${{ vars.APP_ID }}
